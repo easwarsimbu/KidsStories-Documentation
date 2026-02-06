@@ -40,22 +40,19 @@ Traditional AI integrations suffer from:
 
 Instead of a single orchestrator, KidsStories deploys **multiple specialized MCP servers** that communicate with each other:
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                        AZURE-HOSTED MCP SERVER MESH                         │
-├─────────────────────────────────────────────────────────────────────────────┤
-│  ┌─────────────┐    gRPC     ┌─────────────┐    gRPC     ┌─────────────┐   │
-│  │ MCP-TEXT    │◄──────────►│ MCP-GATEWAY │◄──────────►│ MCP-MEDIA   │   │
-│  │ Server      │             │ Server      │             │ Server      │   │
-│  │ (GPT-4o)    │             │ (Router)    │             │ (DALL-E/TTS)│   │
-│  └─────────────┘             └──────┬──────┘             └─────────────┘   │
-│                                     │ gRPC                                  │
-│                              ┌──────▼──────┐                               │
-│                              │ MCP-VIDEO   │                               │
-│                              │ Server      │                               │
-│                              │ (Runware)   │                               │
-│                              └─────────────┘                               │
-└─────────────────────────────────────────────────────────────────────────────┘
+```mermaid
+graph LR
+    subgraph MESH["AZURE-HOSTED MCP SERVER MESH"]
+        GW["MCP-GATEWAY<br/>Router + State"]
+        TXT["MCP-TEXT<br/>GPT-4o + Phi-4"]
+        MED["MCP-MEDIA<br/>DALL-E 3 + TTS"]
+        VID["MCP-VIDEO<br/>Runware (8 models)"]
+    end
+    
+    GW <-->|gRPC| TXT
+    GW <-->|gRPC| MED
+    GW <-->|gRPC| VID
+    TXT <-->|gRPC| MED
 ```
 
 Each MCP server:
@@ -387,19 +384,31 @@ graph TB
 
 ### Service Mesh Networking
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                    CONTAINER APPS INTERNAL VNET                             │
-├─────────────────────────────────────────────────────────────────────────────┤
-│  mcp-gateway.internal.azurecontainerapps.io:443 (gRPC + HTTP/2)            │
-│  mcp-text.internal.azurecontainerapps.io:443                               │
-│  mcp-media.internal.azurecontainerapps.io:443                              │
-│  mcp-video.internal.azurecontainerapps.io:443                              │
-├─────────────────────────────────────────────────────────────────────────────┤
-│  Redis: redis.cache.windows.net:6380 (TLS 1.2, Private Endpoint)           │
-│  Blob: kidsstories.blob.core.windows.net (Private Endpoint)                │
-│  OpenAI: *.openai.azure.com (Managed Identity)                             │
-└─────────────────────────────────────────────────────────────────────────────┘
+```mermaid
+graph TB
+    subgraph VNET["CONTAINER APPS INTERNAL VNET"]
+        subgraph MCP["MCP SERVERS (gRPC + HTTP/2)"]
+            GW["mcp-gateway.internal:443"]
+            TXT["mcp-text.internal:443"]
+            MED["mcp-media.internal:443"]
+            VID["mcp-video.internal:443"]
+        end
+        
+        subgraph PRIVATE["PRIVATE ENDPOINTS"]
+            REDIS["Redis<br/>redis.cache.windows.net:6380<br/>TLS 1.2"]
+            BLOB["Blob Storage<br/>kidsstories.blob.core.windows.net"]
+            AOAI["Azure OpenAI<br/>*.openai.azure.com<br/>Managed Identity"]
+        end
+    end
+    
+    GW <--> TXT
+    GW <--> MED
+    GW <--> VID
+    TXT <--> MED
+    
+    MCP --> REDIS
+    MCP --> BLOB
+    MCP --> AOAI
 ```
 
 ---
