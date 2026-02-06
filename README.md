@@ -1,4 +1,4 @@
-# KidsStories.AI — Distributed MCP Server Architecture
+# KidsVerse.AI — Distributed MCP Server Architecture
 
 A production-grade demonstration of **end-to-end autonomous product delivery** — where AI generates content, synthesizes images, produces audio, renders video, uploads assets to cloud storage, triggers CI/CD pipelines, deploys container revisions, and purges CDN cache — **all autonomously, daily, with zero manual steps**.
 
